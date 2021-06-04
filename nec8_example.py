@@ -10,7 +10,7 @@ pulsein = pulseio.PulseIn(board.D11, maxlen=200, idle_state=True)
 # edge: count of the number of edges
 # ticks_diff: find difference between two utime.ticks_xx (us, ms, or cpu) times (as normal +/- operations don't work properly)
 #   - the original program recorded the actual time (in uS) of pulse events so needed to subtract adjacent events to figure out pulse length, pulseio has already done this for us
-#   - thus calls to ticks_diff have been replaced with direct array accesses
+#   - thus calls to ticks_diff have been replaced with direct list accesses
 def nec8_decode(edge, times):
     # This is all the parameters extracted from the nec8 class / abstract IR_RX class
     addr = -1 #init address
@@ -98,8 +98,6 @@ while True:
 
     print('edges: ', edges)
     print(edgel)
-    print('width1: ', pulsein[0])
-    print(pulsein[2], pulsein[1], pulsein[0])
     print(decode_result)
 
     # if you wanted to make a simple CircuitPython program than took in commands from an IR remote and did something in response, this is where you would do it
