@@ -1,32 +1,23 @@
-print("Feather RP2040 started!")
-
+print("Hello from CircuitPython!")
 
 import pulseio
 import board
-#import adafruit_irremote
 import time
-#import neopixel
-
-#pixels = neopixel.NeoPixel(board.NEOPIXEL, 1)
 
 pulsein = pulseio.PulseIn(board.D11, maxlen=200, idle_state=True)
-#decoder = adafruit_irremote.GenericDecode()
 
-print('entering code.py ir test')
-#pixels.fill([0,0,0])
-
-addr = -1 #init address
-addr_extended = False #we are using nec8
-nedges = 68 # 'Block lasts <= 80ms (extended mode) and has 68 edges'
-tblock = 80
 # times: array of the time of each edge (originally, ticks_us() stored at each edge
 # edge: count of the number of edges
-# callback: in micropython_ir, callback given to run after each recognized IR command
 # ticks_diff: find difference between two utime.ticks_xx (us, ms, or cpu) times (as normal +/- operations don't work properly)
+#   - the original program recorded the actual time (in uS) of pulse events so needed to subtract adjacent events to figure out pulse length, pulseio has already done this for us
+#   - thus calls to ticks_diff have been replaced with direct array accesses
 def nec8_decode(edge, times):
-    #print('nec8d edge', edge)
-    #print('nec8d times', times)
-    global addr
+    # This is all the parameters extracted from the nec8 class / abstract IR_RX class
+    addr = -1 #init address
+    addr_extended = False #we are using nec8
+    nedges = 68 # 'Block lasts <= 80ms (extended mode) and has 68 edges'
+    tblock = 80
+
     # Repeat button code
     REPEAT = -1
     # Error codes
@@ -79,48 +70,45 @@ def nec8_decode(edge, times):
         cmd = e.args[0]
         addr = addr if cmd == REPEAT else 0  # REPEAT uses last address
 
-    # Set up for new data burst and run user callback
-    #self.do_callback(cmd, addr, 0, self.REPEAT)
 
-    # we just return the addr and cmd instead
+    # return addr and cmd, rather than setting up callback like in micropython_ir
     return [addr, cmd]
 
 
 while True:
     start_time = time.monotonic()
-    #pulses = decoder.read_pulses(pulsein, max_pulse=10000, pulse_window=0.068, )
-    #print("Heard", len(pulses), "Pulses:", pulses)
-    #try:
-    #    code = decoder.decode_bits(pulses)
-    #    print("Decoded:", code)
-    #except adafruit_irremote.IRNECRepeatException:  # unusual short code!
-    #    print("NEC repeat!")
-    #except adafruit_irremote.IRDecodeException as e:     # failed to decode
-    #    print("Failed to decode: ", e.args)
 
     # block until enough pulses
-    # todo: doesn't account for repeat codes
+    # todo: doesn't account for repeat codes (they get ignored)
     while(len(pulsein) < 68):
         # if we get a timeout from pulseio, then clear the pulses
         if(len(pulsein) > 0 and pulsein[len(pulsein)-1] == 65535):
             pulsein.clear()
+
+    # pause pulsein so that no new pulses get added between now and when it ultimately gets to the decode function
     pulsein.pause()
 
     edges = len(pulsein)
     edgel = []
+    # convert the pulsein object data to a normal list
     for i in range(68):
         edgel.append(pulsein[i])
     #edgel.append(0)
-    res = nec8_decode(68, edgel)
+    decode_result = nec8_decode(68, edgel)
+
     print('edges: ', edges)
     print(edgel)
     print('width1: ', pulsein[0])
     print(pulsein[2], pulsein[1], pulsein[0])
-    print(res)
+    print(decode_result)
+
+    # if you wanted to make a simple CircuitPython program than took in commands from an IR remote and did something in response, this is where you would do it
+    # eg, you can make a USB HID consumer control device to remotely control volume, next/prev track, play-pause, mute, etc on your PC or phone
 
     pulsein.clear()
     pulsein.resume()
 
+    # Shows the time it took to get here since the start of the while loop, most of which is waiting time in the while loop to get enough pulses
     print("Time = ", str(time.monotonic() - start_time))
     print("----------------------------")
 
